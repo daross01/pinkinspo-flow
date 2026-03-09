@@ -1,24 +1,12 @@
 import { useParams } from "react-router-dom";
+import { useState } from "react";
+import InfiniteScroll from "react-infinite-scroll-component";
+
 import Layout from "@/components/Layout";
 import CTABlock from "@/components/CTABlock";
 import CollageCard from "@/components/CollageCard";
 import { getSubsection } from "@/data/categories";
-
-const placeholderImages = Array.from({ length: 20 }, (_, i) => {
-  const ids = [
-    "1604654894610-df63bc536371",
-    "1519014816548-bf5fe059798b",
-    "1522337360788-8b13dee7a37e",
-    "1507003211169-0a1dd7228f2d",
-    "1487412720507-e7ab37603c6f",
-    "1494790108377-be9c29b29330",
-    "1529626455594-4ff0802cfb7e",
-    "1524504388940-b1c1722653e1",
-    "1534528741775-53994a69daeb",
-    "1517841905240-472988babdf9",
-  ];
-  return `https://images.unsplash.com/photo-${ids[i % ids.length]}?w=600&h=800&fit=crop&auto=format`;
-});
+import { loadImages } from "@/lib/loadImages";
 
 const SubsectionPage = () => {
   const { categorySlug, subsectionSlug } = useParams<{
@@ -31,6 +19,13 @@ const SubsectionPage = () => {
 
   const { category, subsection } = data;
   const otherSubs = category.subsections.filter((s) => s.slug !== subsection.slug);
+
+  // carga imágenes reales desde src/assets/imagenes/<category>/<subsection>
+  const images = loadImages(category.slug, subsection.slug);
+
+  // infinite scroll state
+  const [visible, setVisible] = useState(10);
+  const loadMore = () => setVisible((v) => v + 10);
 
   return (
     <Layout>
@@ -45,25 +40,34 @@ const SubsectionPage = () => {
         <p className="mt-2 text-muted-foreground">{subsection.description}</p>
       </section>
 
-      {/* Image feed */}
-      <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
-        {placeholderImages.map((src, i) => (
-          <div key={i}>
-            {i === 5 && (
-              <div className="pb-4">
-                <CTABlock />
+      {/* Image feed with infinite scroll */}
+      <div className="mx-auto max-w-3xl px-4 py-6">
+        <InfiniteScroll
+          dataLength={visible}
+          next={loadMore}
+          hasMore={visible < images.length}
+          loader={<p className="text-center py-4">Loading...</p>}
+        >
+          <div className="space-y-4">
+            {images.slice(0, visible).map((src, i) => (
+              <div key={i}>
+                {i === 5 && (
+                  <div className="pb-4">
+                    <CTABlock />
+                  </div>
+                )}
+                <div className="overflow-hidden rounded-2xl bg-primary">
+                  <img
+                    src={src}
+                    alt={`${subsection.label} ${category.label} ideas aesthetic ${i + 1} Pinterest inspo`}
+                    className="aspect-[3/4] w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
               </div>
-            )}
-            <div className="overflow-hidden rounded-2xl bg-primary">
-              <img
-                src={src}
-                alt={`${category.label} ${subsection.label} inspo ${i + 1}`}
-                className="aspect-[3/4] w-full object-cover"
-                loading="lazy"
-              />
-            </div>
+            ))}
           </div>
-        ))}
+        </InfiniteScroll>
       </div>
 
       {/* More Inspo */}
@@ -72,7 +76,10 @@ const SubsectionPage = () => {
           <h2 className="mb-4 text-2xl font-bold text-foreground">
             Más {category.label}
           </h2>
-          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4" style={{ scrollbarWidth: "none" }}>
+          <div
+            className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4"
+            style={{ scrollbarWidth: "none" }}
+          >
             {otherSubs.map((sub) => (
               <CollageCard
                 key={sub.slug}
